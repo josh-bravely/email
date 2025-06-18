@@ -10,8 +10,7 @@ try:
     if "openai_api_key" not in st.secrets:
         st.warning("OpenAI API key not found. Please add it to Streamlit secrets.")
     else:
-        openai.api_key = st.secrets["openai_api_key"]
-        client = openai.OpenAI()
+        client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
 
         # Title
         st.title("Bravely Personalized Email Generator")
