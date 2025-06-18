@@ -28,13 +28,15 @@ try:
 
             # Generate emails on button click
             if st.button("Generate Emails"):
+                st.write("Button clicked. Starting email generation...")
                 if not prompt.strip():
                     st.warning("Please enter a topic prompt before generating emails.")
                 else:
                     current_date = datetime(2025, 6, 6)
                     results = []
 
-                    for _, row in users_df.iterrows():
+                    for i, (_, row) in enumerate(users_df.iterrows()):
+                        st.write(f"\n---\nProcessing user {i + 1}...")
                         org = row.get("Organization Name", "their organization")
                         dept = row.get("Department", "their department")
                         role = "Manager" if str(row.get("Manager", "")).strip().lower() == "yes" else "Individual Contributor"
@@ -72,6 +74,7 @@ try:
                             )
 
                             text = response.choices[0].message.content
+                            st.write(f"Raw GPT output for user {i + 1}:", text)
                             lines = [line for line in text.split("\n") if ":" in line]
 
                             if not lines:
@@ -94,7 +97,7 @@ try:
                             })
 
                         except Exception as e:
-                            st.error(f"Error generating email: {e}")
+                            st.error(f"Error generating email for user {i + 1}: {e}")
                             results.append({
                                 "Subject Line": "ERROR",
                                 "Preview Text": "ERROR",
@@ -103,6 +106,7 @@ try:
                             })
 
                     if results:
+                        st.success("Email generation complete.")
                         emails_df = pd.DataFrame(results)
                         st.write("Generated Emails:", emails_df)
                         csv = emails_df.to_csv(index=False)
