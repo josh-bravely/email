@@ -11,6 +11,7 @@ try:
         st.warning("OpenAI API key not found. Please add it to Streamlit secrets.")
     else:
         openai.api_key = st.secrets["openai_api_key"]
+        client = openai.OpenAI()
 
         # Title
         st.title("Bravely Personalized Email Generator")
@@ -60,7 +61,7 @@ try:
                     )
 
                     try:
-                        response = openai.ChatCompletion.create(
+                        response = client.chat.completions.create(
                             model="gpt-4",
                             messages=[
                                 {"role": "system", "content": system_prompt},
