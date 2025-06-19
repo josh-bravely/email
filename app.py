@@ -33,81 +33,79 @@ try:
                 else:
                     current_date = datetime(2025, 6, 6)
                     results = []
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
                     total_users = len(users_df)
 
-                    for i, (_, row) in enumerate(users_df.iterrows()):
-                        progress_bar.progress((i + 1) / total_users)
-                        status_text.text(f"Processing user {i + 1} of {total_users}...")
+                    with st.spinner("Generating emails..."):
+                        for i, (_, row) in enumerate(users_df.iterrows()):
+                            org = row.get("Organization Name", "their organization")
+                            dept = row.get("Department", "their department")
+                            role = "Manager" if str(row.get("Manager", "")).strip().lower() == "yes" else "Individual Contributor"
+                            start_date = pd.to_datetime(row.get("Start Date", ""), errors='coerce')
+                            tenure = (current_date.year - start_date.year) * 12 + current_date.month - start_date.month if pd.notnull(start_date) else "N/A"
 
-                        org = row.get("Organization Name", "their organization")
-                        dept = row.get("Department", "their department")
-                        role = "Manager" if str(row.get("Manager", "")).strip().lower() == "yes" else "Individual Contributor"
-                        start_date = pd.to_datetime(row.get("Start Date", ""), errors='coerce')
-                        tenure = (current_date.year - start_date.year) * 12 + current_date.month - start_date.month if pd.notnull(start_date) else "N/A"
-
-                        user_context = (
-                            f"Organization: {org}\n"
-                            f"Department: {dept}\n"
-                            f"Role: {role}\n"
-                            f"Tenure (months): {tenure}\n"
-                            f"Topic: {prompt}"
-                        )
-
-                        system_prompt = (
-                            "You are an expert email copywriter for Bravely, a coaching company."
-                            " Write a professional onboarding email for a user, broken into four parts:"
-                            " Subject Line, Preview Text, Headline, and Body."
-                            " Make it personalized based on the user's role, organization, department, and tenure."
-                            " Keep the tone supportive, clear, and aligned with Bravely’s brand."
-                        )
-
-                        user_prompt = (
-                            f"Here is the user's information:\n{user_context}\n\n"
-                            "Write the personalized email."
-                        )
-
-                        try:
-                            response = client.chat.completions.create(
-                                model="gpt-4",
-                                messages=[
-                                    {"role": "system", "content": system_prompt},
-                                    {"role": "user", "content": user_prompt}
-                                ]
+                            user_context = (
+                                f"Organization: {org}\n"
+                                f"Department: {dept}\n"
+                                f"Role: {role}\n"
+                                f"Tenure (months): {tenure}\n"
+                                f"Topic: {prompt}"
                             )
 
-                            text = response.choices[0].message.content
-                            lines = [line for line in text.split("\n") if ":" in line]
+                            system_prompt = (
+                                "You are an expert email copywriter for Bravely, a coaching company."
+                                " Write a professional onboarding email for a user, broken into four parts:"
+                                " Subject Line, Preview Text, Headline, and Body."
+                                " Make it personalized based on the user's role, organization, department, and tenure."
+                                " Keep the tone supportive, clear, and aligned with Bravely’s brand."
+                            )
 
-                            if not lines:
+                            user_prompt = (
+                                f"Here is the user's information:\n{user_context}\n\n"
+                                "Write the personalized email."
+                            )
+
+                            try:
+                                response = client.chat.completions.create(
+                                    model="gpt-4",
+                                    messages=[
+                                        {"role": "system", "content": system_prompt},
+                                        {"role": "user", "content": user_prompt}
+                                    ]
+                                )
+
+                                text = response.choices[0].message.content
+
+                                # Enhanced multi-line section parser
+                                parsed = {}
+                                current_section = None
+                                buffer = []
+
+                                for line in text.split("\n"):
+                                    if ":" in line and line.index(":") < 40:
+                                        if current_section:
+                                            parsed[current_section] = "\n".join(buffer).strip()
+                                        key, val = line.split(":", 1)
+                                        current_section = key.strip()
+                                        buffer = [val.strip()]
+                                    elif current_section:
+                                        buffer.append(line.strip())
+                                if current_section:
+                                    parsed[current_section] = "\n".join(buffer).strip()
+
+                                results.append({
+                                    "Subject Line": parsed.get("Subject Line", ""),
+                                    "Preview Text": parsed.get("Preview Text", ""),
+                                    "Headline": parsed.get("Headline", ""),
+                                    "Body": parsed.get("Body", text)
+                                })
+
+                            except Exception as e:
                                 results.append({
                                     "Subject Line": "ERROR",
                                     "Preview Text": "ERROR",
                                     "Headline": "ERROR",
-                                    "Body": text
+                                    "Body": f"Failed to generate email: {str(e)}"
                                 })
-                                continue
-
-                            parsed = {k.strip(): v.strip() for k, v in [line.split(":", 1) for line in lines]}
-
-                            results.append({
-                                "Subject Line": parsed.get("Subject Line", ""),
-                                "Preview Text": parsed.get("Preview Text", ""),
-                                "Headline": parsed.get("Headline", ""),
-                                "Body": parsed.get("Body", text)
-                            })
-
-                        except Exception as e:
-                            results.append({
-                                "Subject Line": "ERROR",
-                                "Preview Text": "ERROR",
-                                "Headline": "ERROR",
-                                "Body": f"Failed to generate email: {str(e)}"
-                            })
-
-                    progress_bar.empty()
-                    status_text.text("Done!")
 
                     if results:
                         st.success("Email generation complete.")
