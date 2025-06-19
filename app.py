@@ -1,9 +1,9 @@
 
-    import pandas as pd
-    from datetime import datetime
-    import time
-    import streamlit as st
-    import openai
+import pandas as pd
+from datetime import datetime
+import time
+import streamlit as st
+import openai
 
     # Set OpenAI API Key securely via Streamlit secrets
     if "openai_api_key" not in st.secrets:
@@ -107,7 +107,7 @@ The tone should always be clear, strategic, supportive, and grounded."""
                             "Write the personalized email."
                         )
 
-                        try:
+try:
                             response = client.chat.completions.create(
                                 model="gpt-4",
                                 messages=[
@@ -141,7 +141,7 @@ The tone should always be clear, strategic, supportive, and grounded."""
                                 "Body": parsed.get("Body", text)
                             })
 
-                        except Exception as e:
+except Exception as e:
                             results.append({
                                 "Subject Line": "ERROR",
                                 "Preview Text": "ERROR",
