@@ -28,15 +28,19 @@ try:
 
             # Generate emails on button click
             if st.button("Generate Emails"):
-                st.write("Button clicked. Starting email generation...")
                 if not prompt.strip():
                     st.warning("Please enter a topic prompt before generating emails.")
                 else:
                     current_date = datetime(2025, 6, 6)
                     results = []
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    total_users = len(users_df)
 
                     for i, (_, row) in enumerate(users_df.iterrows()):
-                        st.write(f"\n---\nProcessing user {i + 1}...")
+                        progress_bar.progress((i + 1) / total_users)
+                        status_text.text(f"Processing user {i + 1} of {total_users}...")
+
                         org = row.get("Organization Name", "their organization")
                         dept = row.get("Department", "their department")
                         role = "Manager" if str(row.get("Manager", "")).strip().lower() == "yes" else "Individual Contributor"
@@ -74,11 +78,9 @@ try:
                             )
 
                             text = response.choices[0].message.content
-                            st.write(f"Raw GPT output for user {i + 1}:", text)
                             lines = [line for line in text.split("\n") if ":" in line]
 
                             if not lines:
-                                st.error("GPT response was malformed or empty.")
                                 results.append({
                                     "Subject Line": "ERROR",
                                     "Preview Text": "ERROR",
@@ -97,13 +99,15 @@ try:
                             })
 
                         except Exception as e:
-                            st.error(f"Error generating email for user {i + 1}: {e}")
                             results.append({
                                 "Subject Line": "ERROR",
                                 "Preview Text": "ERROR",
                                 "Headline": "ERROR",
                                 "Body": f"Failed to generate email: {str(e)}"
                             })
+
+                    progress_bar.empty()
+                    status_text.text("Done!")
 
                     if results:
                         st.success("Email generation complete.")
