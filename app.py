@@ -1,4 +1,46 @@
 
+# Department-specific coaching context
+department_context_map = {
+    "Sales": "In Sales, people often face pressure to perform, meet shifting targets, and lead persuasive conversations under time constraints.",
+    "Engineering": "In Engineering, challenges often include solving complex problems, working through unclear requirements, and communicating across technical boundaries.",
+    "Marketing": "In Marketing, priorities shift quickly, requiring clarity, creativity, and alignment across stakeholders.",
+    "HR": "In HR, balancing empathy with accountability, managing sensitive conversations, and supporting others is a constant responsibility.",
+    "Customer Success": "In Customer Success, success often hinges on balancing client relationships, solving unexpected issues, and staying proactive.",
+    "Product": "In Product, it’s about aligning diverse needs, making tradeoffs, and navigating strategic ambiguity.",
+}
+dept_context = department_context_map.get(dept, "")
+
+
+import re
+
+def improved_numbered_parser(text: str) -> dict:
+    parsed = {}
+    current_section = None
+    buffer = []
+
+    section_headers = ["Subject Line", "Preview Text", "Headline", "Body"]
+    header_pattern = re.compile(r'^\s*(\d\.\s*)?(Subject Line|Preview Text|Headline|Body):', re.IGNORECASE)
+
+    for line in text.split("\n"):
+        match = header_pattern.match(line.strip())
+        if match:
+            if current_section:
+                parsed[current_section] = "\n".join(buffer).strip()
+            current_section = match.group(2).strip()
+            buffer = [line.split(":", 1)[1].strip()]
+        elif current_section:
+            buffer.append(line.strip())
+
+    if current_section and buffer:
+        parsed[current_section] = "\n".join(buffer).strip()
+
+    # Fill missing sections with empty strings
+    for header in section_headers:
+        parsed.setdefault(header, "")
+
+    return parsed
+
+
 import pandas as pd
 from datetime import datetime
 import time
@@ -88,20 +130,31 @@ try:
                                 f"Topic: {prompt}"
                             )
 
-                            system_prompt = (
-                                "You are an expert email copywriter for Bravely, a coaching company."
-                                " Your goal is to write a warm, empowering onboarding email for a user based on their role, tenure, department, and coaching topic."
-                                " Structure the email in four parts:"
-                                "\n1. Subject Line (short and impactful)"
-                                "\n2. Preview Text (1 sentence that acts like an email teaser)"
-                                "\n3. Headline (a punchy 3-6 word phrase)"
-                                "\n4. Body (3 short paragraphs):"
-                                "\n   - Start with a personalized intro about the user’s context"
-                                "\n   - In the second paragraph, include a 3-bullet list of coaching suggestions with a varied lead-in like 'Partner with a coach to:', 'Your coach can help you:', etc."
-                                "\n   - End with a sentence that begins with a phrase like “Book a session to…”, “Schedule a session to…”, or similar, followed by the [BOOK A SESSION] CTA on its own line"
-                                " Tailor the tone based on whether the user is a manager or individual contributor."
-                                " The tone should always be supportive, confidential, and helpful."
-                            )
+                            
+
+system_prompt = (
+    "You are an expert email copywriter for Bravely, a coaching company."
+    " Your goal is to write a warm, empowering onboarding email for a user based on their role, tenure, department, and coaching topic."
+    " Structure the email in four parts:"
+    "
+1. Subject Line (short and impactful)"
+    "
+2. Preview Text (1 sentence that acts like an email teaser)"
+    "
+3. Headline (a punchy 3-6 word phrase)"
+    "
+4. Body (3 short paragraphs):"
+    "
+   - Start with a personalized intro that reflects the user's department context and ambitions"
+    "
+   - Include a 3-bullet list of coaching suggestions with a varied lead-in (e.g., 'Your coach can help you:')"
+    "
+   - End with a motivating line like 'Book a session to…' followed by [BOOK A SESSION] on its own line"
+    " Do not include the user's organization name. Tailor the tone based on whether the user is a manager or individual contributor."
+    " The tone should always be clear, strategic, supportive, and grounded."
+)
+
+
 
                             user_prompt = (
                                 f"Here is the user's information:\n{user_context}\n\n"
@@ -117,25 +170,11 @@ try:
                                     ]
                                 )
 
-                                text = response.choices[0].message.content
+                                
+text = response.choices[0].message.content
+parsed = improved_numbered_parser(text)
 
-                                parsed = {}
-                                current_section = None
-                                buffer = []
-
-                                for line in text.split("\n"):
-                                    if ":" in line and line.index(":") < 40:
-                                        if current_section:
-                                            parsed[current_section] = "\n".join(buffer).strip()
-                                        key, val = line.split(":", 1)
-                                        current_section = key.strip()
-                                        buffer = [val.strip()]
-                                    elif current_section:
-                                        buffer.append(line.strip())
-                                if current_section:
-                                    parsed[current_section] = "\n".join(buffer).strip()
-
-                                results.append({
+    results.append({
                                     "Subject Line": parsed.get("Subject Line", ""),
                                     "Preview Text": parsed.get("Preview Text", ""),
                                     "Headline": parsed.get("Headline", ""),
