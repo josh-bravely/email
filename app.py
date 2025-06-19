@@ -65,7 +65,23 @@ try:
     if "openai_api_key" not in st.secrets:
         st.warning("OpenAI API key not found. Please add it to Streamlit secrets.")
     else:
-        client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
+        
+system_prompt = """You are an expert email copywriter for Bravely, a coaching company.
+Your goal is to write a warm, empowering onboarding email for a user based on their role, tenure, department, and coaching topic.
+Structure the email in four parts:
+1. Subject Line (short and impactful)
+2. Preview Text (1 sentence that acts like an email teaser)
+3. Headline (a punchy 3-6 word phrase)
+4. Body (3 short paragraphs):
+   - Start with a personalized intro that reflects the user's department context and ambitions
+   - Include a 3-bullet list of coaching suggestions with a varied lead-in (e.g., 'Your coach can help you:')
+   - End with a motivating line like 'Book a session to…' followed by [BOOK A SESSION] on its own line.
+Do not include the user's organization name.
+Tailor the tone based on whether the user is a manager or individual contributor.
+The tone should always be clear, strategic, supportive, and grounded."""
+
+
+client = openai.OpenAI(api_key=st.secrets["openai_api_key"])
 
         # Prompt input
         prompt = st.text_input("Enter an email topic (e.g., 'career growth', 'burnout', 'giving feedback')")
@@ -134,7 +150,7 @@ try:
 
 
 
-system_prompt = """You are an expert email copywriter for Bravely, a coaching company.
+
 Your goal is to write a warm, empowering onboarding email for a user based on their role, tenure, department, and coaching topic.
 Structure the email in four parts:
 1. Subject Line (short and impactful)
